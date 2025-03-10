@@ -97,11 +97,7 @@ def classify_legal_domain(query: str) -> str:
 
     ---
 
-    # ### **📌 Output Format (STRICTLY FOLLOW THIS)**
-    # - **If Civil Only:** `"General Law, Civil Score: X%, Criminal Score: Y%"`  
-    # - **If Criminal Only:** `"Criminal Law, Civil Score: X%, Criminal Score: Y%"`  
-    # - **If Both:** `"Both, Civil Score: X%, Criminal Score: Y%"`  
-    # - **If Not Applicable in Indian Law:** `"Not Applicable in Indian Law"`  
+
 
     - OUTPUT format - Just the classification mentioned in quotes, no extra text:
     -If Civil Only: civil_law

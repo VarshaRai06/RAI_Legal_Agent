@@ -119,7 +119,7 @@ if st.button("Submit"):
         query_type = query_response["classification"]
         final_response = query_response["response"]
         print(final_response)
-
+        st.markdown(f"<div class='user-query-box'><p class='big-font'>Hello, I have your query.</p></div>", unsafe_allow_html=True)
         # --- Display Response Based on Classification ---
         if query_type == "criminal_law":
             st.markdown("<h3 class='criminal-header'>⚖️ Criminal Law Agent Response</h3>", unsafe_allow_html=True)

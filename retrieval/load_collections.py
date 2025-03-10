@@ -13,4 +13,8 @@ def get_chroma_collections():
     criminal_law_collection = client.get_or_create_collection("criminal_law_rag")
     print("civil_law_collection loaded")
 
+    
+
     return civil_law_collection, criminal_law_collection
+
+

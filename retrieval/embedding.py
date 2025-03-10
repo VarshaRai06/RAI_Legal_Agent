@@ -64,8 +64,9 @@ def embed_and_store(file_path, collection):
 
     print(f"✅ Embeddings stored for {file_path}")
 
-if __name__ == "__main__":
 
+
+if __name__ == "__main__":
 
     print("🔹 Embedding Civil Law data...")
     embed_and_store(os.path.join(CHUNKED_DIR, "civil_laws_chunks.json"), civil_law_collection)

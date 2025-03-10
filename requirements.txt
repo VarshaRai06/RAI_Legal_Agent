@@ -5,3 +5,4 @@ regex
 sentence_transformers
 pandas
 tf-keras
+streamlit

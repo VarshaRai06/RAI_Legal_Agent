@@ -1,30 +1,36 @@
-import langgraph
-from  agents.retrieval_context import retrieve_legal_text
-from agents.evaluation_agent import evaluate_llm_responses
+from langgraph.graph import StateGraph
+from pydantic import BaseModel
+from typing import List
+from agents.retrieval_agent import retrieval_agent
+from agents.llm_agent import llm_agent
+from agents.evaluation_agent import evaluation_agent
 
-# ✅ Step 1: Initialize LangGraph
-graph = langgraph.Graph()
+# ✅ Define Agent State
+class AgentState(BaseModel):
+    query: str
+    law_type: str
+    retrieved_texts: List[dict] = []  # ✅ Stores retrieved legal text chunks
+    llm_responses: List[dict] = []  # ✅ Stores LLM-generated responses
+    evaluation_scores: List[dict] = []  # ✅ Stores scores from evaluation agent
+    top_responses: List[dict] = []  # ✅ Stores top-ranked responses for fact-checking
+    clubbed_reference_text: str = ""  # ✅ Stores aggregated reference text
+    final_response: str = ""  # ✅ Stores final fact-checked response
 
-# ✅ Step 2: Add Named Agent Nodes
-# graph.add_node("query_processing", query_processing_agent)
-graph.add_node("retrieval_agent", retrieve_legal_text)
-# graph.add_node("llm", llm_agent)
-# graph.add_node("evaluation", evaluation_agent)
-# graph.add_node("fact_checking", fact_checking_agent)
-# graph.add_node("responsible_ai", responsible_ai_agent)
+# ✅ Initialize StateGraph
+graph = StateGraph(AgentState)
 
-# ✅ Step 3: Define Execution Flow Using Node Names
-graph.set_entry_point("query_processing")  # Start with Query Processing
-graph.add_edge("query_processing", "retrieval")  # Query Processing → Retrieval
-graph.add_edge("retrieval", "llm")  # Retrieval → LLM
-graph.add_edge("llm", "evaluation")  # LLM → Evaluation
-graph.add_edge("evaluation", "fact_checking")  # Evaluation → Fact-Checking
-graph.add_edge("fact_checking", "responsible_ai")  # Fact-Checking → Responsible AI
+# ✅ Add Nodes (Agents)
+graph.add_node("retrieval_agent", retrieval_agent)
+graph.add_node("llm_agent", llm_agent)
+graph.add_node("evaluation_agent", evaluation_agent)
 
-print("✅ LangGraph Execution Graph Defined with Named Nodes!")
+# ✅ Define Graph Execution Flow
+graph.add_edge("retrieval_agent", "llm_agent")
+graph.add_edge("llm_agent", "evaluation_agent")
 
-# ✅ Step 4: Test LangGraph Execution
-if __name__ == "__main__":
-    user_query = "How can I take divorce according to Hindu law?"
-    response = graph.execute(user_query)
-    print("✅ Final Output:", response)
+# ✅ Define Entry Point (Starting Node)
+graph.set_entry_point("retrieval_agent")
+
+# ✅ Compile Graph
+runnable_graph = graph.compile()
+print("✅ LangGraph Execution Graph Defined and Compiled!")

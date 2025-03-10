@@ -33,32 +33,40 @@ def call_llm_with_citation_test():
     **Retrieved Legal Documents:** {sample_retrieved_docs}
     **User Query:** {sample_query}
 
-    Provide 4 distinct legally accurate responses including case laws, statutes, or references. No numbering please. No spacing between lines.
-    DO NOT include 'response_id' or any formatting in the response. Just return the pure legal response as a paragraph.
+    Provide all 4 responses strictly as a single JSON array (list) of dictionaries in the following format:
+    [
+        {{"response_id": "unique response id", "response": "legal response", "citations": "relevant citation"}}
+    ]
+
+    Do not include any additional text outside the JSON array.
     """
 
-    # Call OpenAI GPT-4 API
-    response = openai.ChatCompletion.create(
+    # ✅ Call OpenAI GPT-4 API
+    response = openai.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "system", "content": prompt}],
-        temperature=0.1,
-        max_tokens=1024,
-        n=4  # Generate 4 separate responses
+        messages=[
+            {"role": "system", "content": "You are an Indian legal expert."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.1
     )
 
-    # Extract and Structure Responses in the Required Format
-    llm_responses = []
-    for i, choice in enumerate(response["choices"]):
-        response_text = choice["message"]["content"].strip()
-        
-        # Store responses as paragraphs in the required format
-        llm_responses.append(f"Response ID: resp_00{i+1}\nResponse: {response_text} (Citation: {sample_retrieved_docs})\n")
-    
-    # Print responses in the required format
-    print("\n\n".join(llm_responses))
+    # ✅ Extract Response Properly
+    try:
+        response_text = response.choices[0].message.content.strip()
+        llm_responses = json.loads(response_text)  # ✅ Ensure parsing is correct
+    except (json.JSONDecodeError, IndexError) as e:
+        print(f"⚠️ JSON Parsing Error in LLM Response: {e}")
+        return []
 
-    return llm_responses  # Return the structured responses only
+    # ✅ Ensure Correct Key Format (response_id, response, citations)
+    formatted_responses = []
+    for i, resp in enumerate(llm_responses):
+        formatted_responses.append({
+            "response_id": resp.get("response_id", f"resp_00{i+1}"),
+            "response": resp.get("response", "No response available"),
+            "citations": resp.get("citations", "No citations available")
+        })
 
-# Run the Test
-if __name__ == "__main__":
-    output = call_llm_with_citation_test()
+    print("\n✅ LLM Responses Generated:", formatted_responses)
+    return formatted_responses  # ✅ Return properly formatted responses

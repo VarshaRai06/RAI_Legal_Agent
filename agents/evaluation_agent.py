@@ -1,62 +1,100 @@
 import nltk
+import shutil
+import os, re
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from rouge_score import rouge_scorer
+# from nltk.tokenize import word_tokenize
 from nltk.translate.meteor_score import meteor_score
 import torch
 from bert_score import score as bert_score
 
-# Ensure NLTK resources are available
+# ✅ Step 1: Remove ALL NLTK Data to Fix Corrupt Files
+for path in nltk.data.path:
+    if os.path.exists(path):
+        shutil.rmtree(path, ignore_errors=True)
+
+# ✅ Step 2: Reinstall NLTK Resources Cleanly
+# nltk.download('punkt')
 nltk.download('wordnet')
+nltk.download('omw-1.4')
 
-def compute_bleu(reference, candidate):
+print("✅ NLTK Reinstalled Successfully")
+
+def custom_tokenize(text):
     """
-    Computes BLEU score for a single reference-candidate pair.
+    Uses regex-based tokenization instead of NLTK's word_tokenize().
+    This avoids dependency on external NLTK resources like 'punkt'.
+    """
+    return re.findall(r'\b\w+\b', text.lower())  # Extracts words while ignoring punctuation
+
+
+def compute_bleu(reference_tokens, hypothesis_tokens):
+    """
+    Computes BLEU score between reference and hypothesis text.
     Args:
-        reference (str): The retrieved legal text (ground truth).
-        candidate (str): The LLM-generated response.
+        reference_tokens (list[list[str]]): List of tokenized reference texts.
+        hypothesis_tokens (list[str]): Tokenized hypothesis text.
     Returns:
-        float: BLEU score (0-1 scale).
+        float: BLEU score.
     """
-    ref_tokens = reference.split()
-    cand_tokens = candidate.split()
-    smoothie = SmoothingFunction().method4  # Smoothing for better BLEU accuracy
-    return sentence_bleu([ref_tokens], cand_tokens, smoothing_function=smoothie)
+    smoothie = SmoothingFunction().method1  # Prevents zero scores for short texts
+    return sentence_bleu(reference_tokens, hypothesis_tokens, smoothing_function=smoothie)
 
-def compute_rouge(reference, candidate):
+
+def compute_rouge(reference_tokens, hypothesis_tokens):
     """
-    Computes ROUGE scores (ROUGE-1, ROUGE-2, ROUGE-L) between reference and candidate.
+    Computes ROUGE score between reference and hypothesis text.
+    
     Args:
-        reference (str): The retrieved legal text (ground truth).
-        candidate (str): The LLM-generated response.
+        reference_tokens (list[list[str]]): Tokenized reference texts.
+        hypothesis_tokens (list[str]): Tokenized hypothesis text.
+
     Returns:
-        float: ROUGE-L F1 score (best for long text similarity).
+        float: ROUGE-L score.
     """
-    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
-    scores = scorer.score(reference, candidate)
-    return scores['rougeL'].fmeasure  # We return ROUGE-L F1 score
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)  # ✅ Fixed metric name
 
-def compute_meteor(reference, candidate):
+    # ✅ Convert Tokenized Lists Back to Strings
+    reference_text = " ".join(reference_tokens[0])  # Convert first reference list to string
+    hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
+
+    scores = scorer.score(reference_text, hypothesis_text)  # ✅ Ensure both inputs are strings
+    return scores["rougeL"].fmeasure  # ✅ Return ROUGE-L F1 Score
+
+def compute_meteor(reference_tokens, hypothesis_tokens):
     """
-    Computes METEOR score for a single reference-candidate pair.
+    Computes METEOR score for a tokenized reference-candidate pair.
+    
     Args:
-        reference (str): The retrieved legal text (ground truth).
-        candidate (str): The LLM-generated response.
+        reference_tokens (list[list[str]]): List of tokenized reference texts.
+        hypothesis_tokens (list[str]): Tokenized hypothesis text.
+
     Returns:
         float: METEOR score (0-1 scale).
     """
-    return meteor_score([reference], candidate)
+    # # ✅ Convert Tokenized Lists Back to Strings
+    # reference_text = " ".join(reference_tokens[0])  # Convert first reference list to string
+    # hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
 
-def compute_bert(reference, candidate):
+    return meteor_score(reference_tokens, hypothesis_tokens)  # ✅ Ensure METEOR gets strings
+
+def compute_bert(reference_tokens, hypothesis_tokens):
     """
-    Computes BERTScore for a single reference-candidate pair.
+    Computes BERTScore for a tokenized reference-candidate pair.
+    
     Args:
-        reference (str): The retrieved legal text (ground truth).
-        candidate (str): The LLM-generated response.
+        reference_tokens (list[list[str]]): List of tokenized reference texts.
+        hypothesis_tokens (list[str]): Tokenized hypothesis text.
+
     Returns:
         float: BERTScore F1 score.
     """
-    P, R, F1 = bert_score([candidate], [reference], lang="en", rescale_with_baseline=True)
-    return F1[0].item()  # Extract the F1 score as a float
+    # ✅ Convert Tokenized Lists Back to Strings
+    reference_text = " ".join(reference_tokens[0])  # Convert first reference list to string
+    hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
+
+    P, R, F1 = bert_score([hypothesis_text], [reference_text], lang="en", rescale_with_baseline=True)
+    return F1[0].item()  # ✅ Ensure BERTScore gets strings
 
 def club_top_retrieved_texts(retrieved_texts):
     """
@@ -77,30 +115,47 @@ def club_top_retrieved_texts(retrieved_texts):
     return clubbed_reference_text
 
 
+
+
+# nltk.download("punkt")  # Ensure tokenization is available
+
 def evaluate_llm_responses(llm_responses, clubbed_reference_text):
     """
     Evaluates each LLM response against the clubbed reference text.
-
-    Args:
-        llm_responses (list[dict]): List of LLM-generated responses.
-        clubbed_reference_text (str): The combined reference text from retrieved legal contexts.
-
-    Returns:
-        list[dict]: List of responses with their respective evaluation scores.
     """
     evaluated_responses = []
+
+    # ✅ Tokenize Reference Text
+    tokenized_references = [custom_tokenize(clubbed_reference_text)]
 
     for response_obj in llm_responses:
         response_id = response_obj["response_id"]
         response_text = response_obj["response"]
-        response_citations = response_obj["citations"]
-        # Compute evaluation scores
-        bleu = compute_bleu(clubbed_reference_text, response_text)
-        rouge = compute_rouge(clubbed_reference_text, response_text)
-        meteor = compute_meteor(clubbed_reference_text, response_text)
-        bert = compute_bert(clubbed_reference_text, response_text)
+        response_citations = response_obj.get("citations", [])
 
-        # Store evaluation results
+        if not response_text.strip():
+            evaluated_responses.append({
+                "response_id": response_id,
+                "response": response_text,
+                "citations": response_citations,
+                "bleu_score": 0,
+                "rouge_score": 0,
+                "meteor_score": 0,
+                "bert_score": 0,
+                "final_score": 0
+            })
+            continue
+
+        # ✅ Tokenize LLM Response
+        tokenized_hypothesis = custom_tokenize(response_text)
+
+        # ✅ Compute Evaluation Scores
+        bleu = compute_bleu(tokenized_references, tokenized_hypothesis)
+        rouge = compute_rouge(tokenized_references, tokenized_hypothesis)
+        meteor = compute_meteor(tokenized_references, tokenized_hypothesis)  # ✅ Fix applied
+        bert = compute_bert(tokenized_references, tokenized_hypothesis)  # ✅ Fix applied
+
+        # ✅ Store Evaluation Results
         evaluated_responses.append({
             "response_id": response_id,
             "response": response_text,
@@ -109,10 +164,13 @@ def evaluate_llm_responses(llm_responses, clubbed_reference_text):
             "rouge_score": rouge,
             "meteor_score": meteor,
             "bert_score": bert,
-            "final_score": (0.25 * bleu + 0.25 * rouge + 0.25 * meteor + 0.25 * bert)  # Weighted average
+            "final_score": (0.25 * bleu + 0.25 * rouge + 0.25 * meteor + 0.25 * bert)
         })
 
     return evaluated_responses
+
+
+
 
 def select_top_responses(evaluated_responses, top_k=2):
     """
@@ -143,7 +201,8 @@ def select_top_responses(evaluated_responses, top_k=2):
     ]
 
 #this method to be called by the LLM Agent
-def process_evaluation(llm_responses, retrieved_texts):
+def process_evaluation(retrieved_texts, llm_response):
+    print("Reached evaluation agent")
     """
     Orchestrates the entire evaluation process when called by another agent.
 
@@ -154,13 +213,21 @@ def process_evaluation(llm_responses, retrieved_texts):
     Returns:
         list[dict]: Top-ranked responses ready for fact-checking.
     """
+    # retrieved_texts = data.get("retrieved_texts")
+    # llm_response = data.get("llm_response")
+    # query = data.get("query")
+
     # Step 1: Club top 2 retrieved texts into a single reference text
     clubbed_reference_text = club_top_retrieved_texts(retrieved_texts)
 
     # Step 2: Evaluate all LLM responses against this reference text
-    evaluated_responses = evaluate_llm_responses(llm_responses, clubbed_reference_text)
+    evaluated_responses = evaluate_llm_responses(llm_response, clubbed_reference_text)
+    print("evaluated_responses <<<```>>>", evaluated_responses)
 
     # Step 3: Rank responses and select the top 2
     top_responses = select_top_responses(evaluated_responses)
+    print("top_responses", top_responses)
+    print("reached the end of evaluation agent")
 
-    return top_responses  # This goes to the Fact-Checking Agent
+    return top_responses, clubbed_reference_text
+    # return {"query":query,"retrieved_texts": retrieved_texts, "top_responses": top_responses, "evaluation_scores": evaluated_responses, "llm_response" : llm_response}  # This goes to the Fact-Checking Agent

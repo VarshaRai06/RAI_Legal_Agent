@@ -27,8 +27,8 @@ def call_llm(prompt: str, model="gpt-4", temperature=0.1, max_tokens=1024, n=1):
 
         # If multiple responses are requested, return them as a list
         if n > 1:
-            return [choice["message"]["content"].strip() for choice in response["choices"]]
-        
+            return [choice.message.content.strip() for choice in response.choices]
+
         # Return a single response
         return response.choices[0].message.content.strip()
 

@@ -1,1 +1,7 @@
 openai
+transformers
+torch
+regex
+sentence_transformers
+pandas
+tf-keras

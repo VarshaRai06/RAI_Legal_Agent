@@ -13,20 +13,22 @@ openai.api_key = OPENAI_API_KEY
 
 def classify_legal_domain(query: str) -> str:
     """
-    Uses OpenAI LLM to classify the legal domain (General Law or Criminal Law).
+    Uses OpenAI LLM to classify the legal domain (Civil Law or Criminal Law).
 
     :param query: User's input legal question.
     :return: Legal domain category as a string.
     """
 
+
+
     prompt = f"""
     You are an **Indian legal assistant**, and your task is to classify legal queries **ONLY based on Indian laws** into one of three categories:
-    - **"General Law"** (Civil Law: Disputes related to marriage, property, contracts, family, business, etc.).
-    - **"Criminal Law"** (Offenses punishable under IPC, fraud, crimes, etc.).
-    - **"Both"** (If the case involves violations of both Civil and Criminal Law).
+    - **"civil_law"** (Civil Law: Disputes related to marriage, property, contracts, family, business, etc.).
+    - **"criminal_law"** (Offenses punishable under IPC, fraud, crimes, etc.).
+    - **"both"** (If the case involves violations of both Civil and Criminal Law).
 
     ---
-
+    Then, classify it based on the following criteria:
     ### **📌 Important Instruction:**
     🚨 **Strictly follow only the legal framework of India.** 🚨  
     🚨 **If a query involves an area of law that does not exist in India, classify it as "Not Applicable in Indian Law".** 🚨  
@@ -36,27 +38,27 @@ def classify_legal_domain(query: str) -> str:
     ### **📌 Classification Criteria (Considering ALL Indian Laws)**
     You must analyze the query based on **legal principles** rather than specific law names:
 
-    #### **1️⃣ Civil Law (General Law) Applies When:**
-    ✅ The case involves **private disputes** between individuals or entities.  
-    ✅ The issue relates to **personal rights & obligations** under Indian **family, property, business, labor, or consumer laws**.  
-    ✅ The resolution involves **legal remedies such as compensation, court orders, or compliance** (not punishment).  
-    ✅ Examples include:  
+    ####Civil Law (General Law) Applies When:**
+    The case involves **private disputes** between individuals or entities.  
+    The issue relates to **personal rights & obligations** under Indian **family, property, business, labor, or consumer laws**.  
+    The resolution involves **legal remedies such as compensation, court orders, or compliance** (not punishment).  
+    Examples include:  
     - **Marriage, Divorce, Maintenance, Child Custody.**  
     - **Property Disputes, Inheritance, Land Ownership.**  
     - **Business Contracts, Financial Agreements, Consumer Rights, Employment Laws.**  
 
-    #### **2️⃣ Criminal Law Applies When:**
-    ✅ The case involves **an act punishable under Indian Penal Code (IPC) or other Indian criminal laws**.  
-    ✅ The offense is legally **punishable by imprisonment, fines, or state prosecution**.  
-    ✅ The case includes elements like **fraud, violence, financial crimes, abuse, public safety violations, or cyber offenses**.  
-    ✅ Examples include:  
+    ####Criminal Law Applies When:
+    The case involves **an act punishable under Indian Penal Code (IPC) or other Indian criminal laws**.  
+    The offense is legally **punishable by imprisonment, fines, or state prosecution**.  
+    The case includes elements like **fraud, violence, financial crimes, abuse, public safety violations, or cyber offenses**.  
+    Examples include:  
     - **Murder, Theft, Fraud, Cybercrimes, Financial Crimes.**  
     - **Sexual Harassment, Domestic Violence, Kidnapping.**  
     - **Public Safety Violations, Corruption, Criminal Breach of Trust.**  
 
-    #### **3️⃣ Both Civil & Criminal Laws Apply When:**
-    ✅ The case has **both a personal dispute (civil)** AND **an offense punishable under criminal law**.  
-    ✅ Examples include:  
+    ####Both Civil & Criminal Laws Apply When:
+    The case has **both a personal dispute (civil)** AND **an offense punishable under criminal law**.  
+    Examples include:  
     - **Bigamy:** A civil marriage dispute + IPC 494 for criminal bigamy.  
     - **Domestic Violence:** Divorce & protection orders (civil) + Assault or cruelty (criminal).  
     - **Fraud in Business:** Contract disputes (civil) + Financial fraud or misrepresentation (criminal).  
@@ -64,18 +66,23 @@ def classify_legal_domain(query: str) -> str:
 
     ---
 
-    ### **📌 Output Format (STRICTLY FOLLOW THIS)**
-    - **If Civil Only:** `"General Law, Civil Score: X%, Criminal Score: Y%"`  
-    - **If Criminal Only:** `"Criminal Law, Civil Score: X%, Criminal Score: Y%"`  
-    - **If Both:** `"Both, Civil Score: X%, Criminal Score: Y%"`  
-    - **If Not Applicable in Indian Law:** `"Not Applicable in Indian Law"`  
+    # ### **📌 Output Format (STRICTLY FOLLOW THIS)**
+    # - **If Civil Only:** `"General Law, Civil Score: X%, Criminal Score: Y%"`  
+    # - **If Criminal Only:** `"Criminal Law, Civil Score: X%, Criminal Score: Y%"`  
+    # - **If Both:** `"Both, Civil Score: X%, Criminal Score: Y%"`  
+    # - **If Not Applicable in Indian Law:** `"Not Applicable in Indian Law"`  
 
+    - OUTPUT format - Just the classification mentioned in quotes, no extra text:
+    -If Civil Only: civil_law
+    -If Criminal Only: criminal_law  
+    -If Both: both
+    -If Not Applicable in Indian Law: na
     ---
 
     ### **Query:**  
     "{query}"  
 
-    ### **Analyze the case carefully and return the classification with reasoning. DO NOT rely on keywords. Focus on legal violations and consequences. Ensure that ALL civil and criminal laws applicable in India are considered dynamically. STRICTLY IGNORE ANY FOREIGN LAWS OR LEGAL PRINCIPLES.**  
+    ### **Analyze the case carefully and return the classification only as mentioned in OUTPUT format. DO NOT rely on keywords. Focus on legal violations and consequences. Ensure that ALL civil and criminal laws applicable in India are considered dynamically. STRICTLY IGNORE ANY FOREIGN LAWS OR LEGAL PRINCIPLES.**  
     """
 
 
@@ -139,4 +146,4 @@ def classify_legal_domain(query: str) -> str:
 if __name__ == "__main__":
     example_query = input()
     result = classify_legal_domain(example_query)
-    print(f"Legal Domain: {result}")  # Expected Output: "General Law" or "Criminal Law"
+    print(f"{result}")  # Expected Output: "General Law" or "Criminal Law"

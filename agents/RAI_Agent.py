@@ -1,113 +1,136 @@
-from langchain.agents import initialize_agent, Tool
-from langchain.llms import OpenAI
-from transformers import pipeline
 import re
-import logging
+import pandas as pd
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
+from presidio_anonymizer.entities import OperatorConfig
+from detoxify import Detoxify
+from transformers import pipeline
 
-# Initialize responsible AI pipelines
-bias_detector = pipeline("text-classification", model="d4data/bias-detection-model")
-toxicity_detector = pipeline("text-classification", model="unitary/toxic-bert")
-detoxifier = pipeline("text2text-generation", model="s-nlp/bart-base-detox")
-anonymizer = pipeline("ner", model="dslim/bert-base-NER")
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-class ResponsibleAIAgent:
+class ResponsibleAIPipeline:
     def __init__(self):
-        self.bias_detector = bias_detector
-        self.toxicity_detector = toxicity_detector
-        self.detoxifier = detoxifier
-        self.anonymizer = anonymizer
-        self.bias_threshold = 0.75
-        self.toxicity_threshold = 0.7
+        """
+        Initializes the Responsible AI processing pipeline with:
+        - Anonymization (PII detection & redaction)
+        - Privacy Compliance Check (Phone, Aadhaar, PAN, Email)
+        - Toxicity Detection & Detoxification
+        - Bias Detection
+        """
+        #Initialize Presidio Analyzer & Anonymizer
+        self.analyzer = AnalyzerEngine()
+        self.anonymizer = AnonymizerEngine()
 
-    def check_bias(self, text):
-        result = self.bias_detector(text)[0]
-        logging.info(f"Bias Check: {result}")
-        return result['label'] == 'Biased' and result['score'] > self.bias_threshold
+        #Precompiled Regex for Privacy Compliance
+        self.sensitive_patterns = {
+            "Phone Number": re.compile(r'\b\d{10}\b'),
+            "Aadhaar Number": re.compile(r'\b\d{12}\b'),
+            "PAN Number": re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b'),
+            "Email Address": re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
+        }
 
-    def is_toxic(self, text):
-        result = self.toxicity_detector(text)[0]
-        logging.info(f"Toxicity Check: {result}")
-        return result['label'] == 'toxic' and result['score'] > self.toxicity_threshold
+        #Load Detoxify for Toxicity Detection
+        self.toxicity_model = Detoxify('original')
 
-    def detoxify_text(self, text):
-        detoxified = self.detoxifier(text)[0]['generated_text']
-        logging.info(f"Detoxified Text: {detoxified}")
-        if self.is_toxic(detoxified):
-            return None
-        return detoxified
 
-    def anonymize(self, text):
-        entities = self.anonymizer(text)
-        anonymized_text = text
-        anonymized = False
-        for entity in entities:
-            if entity['entity'] in ['PER', 'ORG', 'LOC']:
-                anonymized_text = anonymized_text.replace(entity['word'], '[REDACTED]')
-                anonymized = True
-        logging.info(f"Anonymized Text: {anonymized_text}")
-        return anonymized_text, anonymized
 
-    def check_privacy_compliance(self, text):
-        sensitive_patterns = [
-            r'\b\d{10}\b',
-            r'\b[\w.-]+@[\w.-]+\.\w+\b',
-            r'\b[A-Z]{5}[0-9]{4}[A-Z]\b',  # PAN format
-            r'\b\d{12}\b',                # Aadhaar format
-        ]
-        for pattern in sensitive_patterns:
-            if re.search(pattern, text):
-                logging.warning(f"Privacy Violation Detected: {pattern}")
-                return False
-        return True
 
-    def apply_responsible_ai(self, text):
-        text, anonymized = self.anonymize(text)
+    def anonymize(self, text: str) -> str:
+        """
+        Detects & anonymizes personally identifiable information (PII) before further processing.
+        - Names are replaced dynamically with placeholders: [Person 1], [Person 2], etc.
+        - Other PII types (phone, email, location) are anonymized using direct replacement.
+        """
+        results = self.analyzer.analyze(text=text, language="en")
 
-        if not self.check_privacy_compliance(text):
-            return False, "The generated response contains sensitive private information and cannot be displayed."
+        if results:
+            name_mapping = {}  # Store unique placeholders for names
+            person_counter = 1  # Counter for assigning Person IDs
+            anonymized_text = text  # Start with the original text
 
-        if self.is_toxic(text):
-            detoxified_text = self.detoxify_text(text)
-            if detoxified_text is None:
-                return False, "The generated response remains toxic after detoxification and cannot be displayed."
-            text = detoxified_text
+            # **Step 1: Identify PERSON entities & Assign Placeholder Names**
+            for result in results:
+                if result.entity_type == "PERSON":
+                    original_value = text[result.start:result.end].strip()
 
-        if self.check_bias(text):
-            unbiased_text = self.detoxify_text(text)
-            if unbiased_text is None or self.check_bias(unbiased_text):
-                return False, "The generated response contains significant bias and cannot be displayed."
-            text = unbiased_text
+                    if original_value not in name_mapping:
+                        name_mapping[original_value] = f"[Person {person_counter}]"
+                        person_counter += 1
 
-        if anonymized:
-            text += "\n\n(Note: Some sensitive information has been anonymized.)"
+            # **Step 2: Replace Names First (Before Other PII)**
+            for original_name, placeholder in name_mapping.items():
+                anonymized_text = re.sub(rf'\b{re.escape(original_name)}\b', placeholder, anonymized_text)
 
-        return True, text
+            print("Name Mapping:", name_mapping)
+            print("After Name Replacement:", anonymized_text)
 
-    def responsible_ai_tool(self, input_text):
-        is_safe, response = self.apply_responsible_ai(input_text)
-        return response
 
-# Initialize LangChain agent
-responsible_agent = ResponsibleAIAgent()
+            results = self.analyzer.analyze(text=anonymized_text, language="en")
+            # **Step 3: Filter out incorrect entities & Keep Only Correct Ones**
+            valid_entities = {"PHONE_NUMBER", "EMAIL_ADDRESS", "LOCATION"}
+            filtered_results = [res for res in results if res.entity_type in valid_entities]
+            print("Filtered Results:", filtered_results)
 
-responsible_tool = Tool(
-    name="ResponsibleAI",
-    func=responsible_agent.responsible_ai_tool,
-    description="Applies Responsible AI measures including bias detection, toxicity reduction, advanced anonymization, and privacy compliance checks specific to legal contexts."
-)
 
-agent = initialize_agent(
-    tools=[responsible_tool],
-    llm=OpenAI(),
-    agent="zero-shot-react-description",
-    verbose=True
-)
 
-# Example usage
+            # **Step 4: Replace Detected Entities Manually (Using start & end indices)**
+            for result in sorted(filtered_results, key=lambda r: r.start, reverse=True):
+                placeholder = {
+                    "PHONE_NUMBER": "[PHONE_REDACTED]",
+                    "EMAIL_ADDRESS": "[EMAIL_REDACTED]",
+                    "LOCATION": "[LOCATION_REDACTED]"
+                }.get(result.entity_type, "[REDACTED]")
+
+                anonymized_text = (
+                    anonymized_text[:result.start] + placeholder + anonymized_text[result.end:]
+                )
+
+            print("Final Anonymized Text:", anonymized_text)
+            return anonymized_text  # Return final cleaned text
+
+        else:
+            return text  # No PII detected, return original text
+
+
+
+    def check_privacy_compliance(self, text: str) -> str:
+        """
+        Scans for unmasked sensitive data (Phone, Aadhaar, PAN, Email).
+        If privacy violation is detected, stops processing.
+        """
+        for category, pattern in self.sensitive_patterns.items():
+            if pattern.search(text):
+                return "Privacy Violation: Sensitive personal information detected."
+
+        return text  # Safe to proceed
+
+    def check_toxicity(self, text: str) -> str:
+        """
+        Detects if the text is toxic.
+        If toxic, detoxifies before proceeding.
+        """
+        toxicity_scores = self.toxicity_model.predict(text)
+        print("Toxicity Scores:", toxicity_scores)
+        toxicity_threshold = 0.5  # Strict threshold
+
+        if toxicity_scores["toxicity"] > toxicity_threshold:
+        
+                return "Toxicity detected, but detoxification failed. Response cannot be displayed."
+
+        return text  # Safe to proceed
+
+   
+#Example Usage
 if __name__ == "__main__":
-    summarizer_output = "Summarized output from previous agent."
-    response = agent.run(summarizer_output)
-    print(response)
+    ai_pipeline = ResponsibleAIPipeline()
+
+    input_text = input("Enter AI-generated legal response: ")
+
+    # Step 1: Run Anonymization
+    anonymized_text = ai_pipeline.anonymize(input_text)
+
+    # Step 2: Run Privacy Compliance Check
+    privacy_checked_text = ai_pipeline.check_privacy_compliance(anonymized_text)
+
+    # Step 3: Run Toxicity Check & Detoxify if needed
+    final_text = ai_pipeline.check_toxicity(privacy_checked_text)
+
+    print(f"RAI Processed Response: {final_text}")

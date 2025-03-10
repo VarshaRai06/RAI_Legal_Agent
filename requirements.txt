@@ -6,3 +6,18 @@ sentence_transformers
 pandas
 tf-keras
 streamlit
+
+# Core Libraries
+numpy==1.24.3
+
+# ChromaDB (Vector Database)
+chromadb==0.6.3
+
+# Sentence Transformers (For Embeddings)
+sentence-transformers==2.2.2
+
+# NLP Libraries (For Evaluation)
+nltk==3.8.1
+wordnet==3.0  # Needed for METEOR Score
+bert-score==0.3.13  # BERT-based Evaluation
+rouge-score==0.1.2

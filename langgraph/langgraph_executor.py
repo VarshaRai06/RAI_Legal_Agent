@@ -1,9 +1,9 @@
 from langgraph.graph import StateGraph
 from pydantic import BaseModel
 from typing import List
-from agents.retrieval_agent import retrieval_agent
-from agents.llm_agent import llm_agent
-from agents.evaluation_agent import evaluation_agent
+from agents.completion_agents import retrieval_agent
+from agents.completion_agents import llm_agent
+from agents.completion_agents import evaluation_agent
 
 # ✅ Define Agent State
 class AgentState(BaseModel):

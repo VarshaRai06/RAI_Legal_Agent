@@ -1,16 +1,13 @@
 import openai # type: ignore
-import uuid
-
+import json
+from config import OPENAI_API_KEY
 # Set up OpenAI API Key
-openai.api_key = "your_openai_api_key"  # 🔹 Replace this with your actual OpenAI API key
+openai.api_key = OPENAI_API_KEY  # 🔹 Replace this with your actual OpenAI API key
 
-def call_llm_with_citation_test():
+def call_llm_with_citation_test(query, retrieved_context):
     """Test LLM response with a sample legal question and citations."""
 
-    sample_query = "Can a person claim self-defense after injuring someone in a fight?"
-    sample_context = "The person was attacked first and reacted to protect themselves."
-    sample_retrieved_docs = "Relevant Laws: Indian Penal Code, 1860 - Section 96 (Right to Private Defense); Supreme Court Judgment - XYZ vs. LMN, 2019."
-
+    
     # Construct prompt
     prompt = f"""
     You are an AI Legal Assistant specializing in Civil Law, trained to provide precise, legally accurate, and well-structured responses based on the retrieved legal documents.
@@ -29,9 +26,9 @@ def call_llm_with_citation_test():
     5. **User-Friendly Explanations** - If legal concepts are complex, provide concise explanations in plain language for better understanding.
     6. **Citation Format** - Include citations at the end of the response in the format: (Law Name, Section, Case Law Reference, Year). Example: "According to the Contract Act, 1872, Section 10..." or "As per [Case Name], Supreme Court, 2021..."
 
-    **Context:** {sample_context}
-    **Retrieved Legal Documents:** {sample_retrieved_docs}
-    **User Query:** {sample_query}
+
+    **Retrieved Legal Documents:** {retrieved_context}
+    **User Query:** {query}
 
     Provide all 4 responses strictly as a single JSON array (list) of dictionaries in the following format:
     [

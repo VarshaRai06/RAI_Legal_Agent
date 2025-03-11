@@ -201,7 +201,7 @@ def select_top_responses(evaluated_responses, top_k=2):
     ]
 
 #this method to be called by the LLM Agent
-def process_evaluation(retrieved_texts, llm_response):
+def process_evaluation( llm_response, retrieved_texts):
     print("Reached evaluation agent")
     """
     Orchestrates the entire evaluation process when called by another agent.

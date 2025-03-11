@@ -109,7 +109,7 @@ class ResponsibleAIPipeline:
         """
         toxicity_scores = self.toxicity_model.predict(text)
         print("Toxicity Scores:", toxicity_scores)
-        toxicity_threshold = 0.5  # Strict threshold
+        toxicity_threshold = 0.15  # Strict threshold
 
         if toxicity_scores["toxicity"] > toxicity_threshold:
         

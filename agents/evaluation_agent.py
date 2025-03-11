@@ -15,8 +15,8 @@ for path in nltk.data.path:
 
 # ✅ Step 2: Reinstall NLTK Resources Cleanly
 # nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+# nltk.download('wordnet')
+# nltk.download('omw-1.4')
 
 print("✅ NLTK Reinstalled Successfully")
 
@@ -107,6 +107,9 @@ def club_top_retrieved_texts(retrieved_texts):
         str: Clubbed reference text containing top 2 retrieved legal contexts.
     """
     # Extract only the "text" field from the top 2 retrieved results
+
+    print("in club_top_retrieved_texts.retrieved_texts", retrieved_texts)
+
     top_texts = [doc["text"] for doc in retrieved_texts[:2]]
 
     # Combine the texts into one reference passage for evaluation
@@ -201,7 +204,7 @@ def select_top_responses(evaluated_responses, top_k=2):
     ]
 
 #this method to be called by the LLM Agent
-def process_evaluation(retrieved_texts, llm_response):
+def process_evaluation(llm_response, retrieved_texts):
     print("Reached evaluation agent")
     """
     Orchestrates the entire evaluation process when called by another agent.
@@ -216,7 +219,7 @@ def process_evaluation(retrieved_texts, llm_response):
     # retrieved_texts = data.get("retrieved_texts")
     # llm_response = data.get("llm_response")
     # query = data.get("query")
-
+    print("in process_evaluation.retrieved_texts", retrieved_texts)
     # Step 1: Club top 2 retrieved texts into a single reference text
     clubbed_reference_text = club_top_retrieved_texts(retrieved_texts)
 

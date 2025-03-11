@@ -272,8 +272,6 @@
 #     else:
 #         st.error("⚠️ Please enter a legal query before submitting.")
 
-
-
 import streamlit as st
 from main import run_pipeline  # Import LangGraph execution function
 from agents.query_processing_agent import classify_legal_domain
@@ -341,7 +339,7 @@ st.markdown(
 st.sidebar.title("ℹ️ Instructions:")
 st.sidebar.write("""
 1. Enter your legal query.
-2. Click Submit.
+2. Click **Submit**.
 3. Master Agent will process the query.
 4. The correct legal agent will respond.
 """)
@@ -379,7 +377,7 @@ with chat_area:
 # --- User Input Section ---
 user_query = st.text_input("🔍 Type your legal query here and press Enter:", key="user_input")
 
-if user_query:
+if user_query and "classification" not in st.session_state:
     # Store user input in chat history
     st.session_state["chat_history"].append({"role": "user", "message": user_query})
 
@@ -388,12 +386,16 @@ if user_query:
         st.session_state["chat_history"].append(
             {"role": "system", "message": "Hello there, I am your Master Legal Agent. Let me process your query..."}
         )
+        st.session_state["classification"] = None  # Placeholder to indicate classification is pending
 
-# --- Wait for user to press Enter before proceeding ---
-if len(st.session_state["chat_history"]) > 1 and st.button("Continue"):
+    st.rerun()  # Refresh UI to proceed with classification
+
+# --- Wait for user to press Continue before proceeding ---
+if "classification" in st.session_state and st.session_state["classification"] is None and st.button("Continue"):
     with st.spinner("🔍 Classifying your query..."):
         time.sleep(3)  # Simulate processing delay
         query_type = classify_legal_domain(user_query)
+        st.session_state["classification"] = query_type  # Store classification result
 
         # Add classification message to chat
         if query_type == "criminal_law":
@@ -412,20 +414,17 @@ if len(st.session_state["chat_history"]) > 1 and st.button("Continue"):
             st.session_state["chat_history"].append(
                 {"role": "system", "message": "❌ This query is not applicable under Indian Law."}
             )
+            st.session_state["classification"] = None  # Reset for next query
+            st.rerun()
 
     st.session_state["chat_history"].append(
-                {"role": "system", "message": "Your query involves {query_type}**. Calling {query_type} agents..."}
-            )
+    {"role": "system", "message": f"{query_type} agent Here. Parsing {query_type} laws..."}
+    )
+
 
     with st.spinner("🔎 Fetching legal response..."):
         final_response = run_pipeline(user_query)
         st.session_state["chat_history"].append({"role": "bot", "message": final_response})
-       
-
-
-# # --- Final response handling ---
-# if len(st.session_state["chat_history"]) > 2 and st.button("Get Response"):
-#     with st.spinner("🔎 Fetching legal response..."):
-#         final_response = run_pipeline(user_query)
-#         st.session_state["chat_history"].append({"role": "bot", "message": final_response})
-#         st.rerun()
+        st.session_state["classification"] = None  # Reset for next query
+        st.rerun()
+            

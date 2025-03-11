@@ -1,7 +1,35 @@
 from agents.retrieval_context import retrieve_legal_text
 from agents.LLM import call_llm_with_citation_test
 from agents.evaluation_agent import process_evaluation
+from agents.query_processing import classify_legal_domain
+from agents.relevancy_agent import fact_checking_agent
+from agents.summarize_responses import call_summarizer_agent
+from agents.responsible_flow import responsible_agent
 import json
+
+
+
+
+# ✅ Query Processing Agent (Determines Law Type)
+def query_processing_agent(state):
+    """
+    Calls the query processing logic to classify law type.
+    """
+    print(f"🔹 Query Processing Agent Classifying Query: {state.query}")
+
+    # ✅ Call Query Classification Logic
+    classified_law_type = classify_legal_domain(state.query)
+
+    # ✅ Store Classification in State
+     # ✅ Store Classification in State
+    state.law_type = classified_law_type if classified_law_type in ["civil_law", "criminal_law", "both"] else "unknown"
+
+    print(f"✅ Classified Query as: {state.law_type}")
+
+    return state
+
+
+
 
 def retrieval_agent(state):
     """
@@ -63,11 +91,6 @@ def llm_agent(state):
 
 
 
-
-
-
-
-
 def evaluation_agent(state):
     """
     Evaluates the LLM response using NLP metrics and selects top responses.
@@ -100,28 +123,73 @@ def evaluation_agent(state):
     state.clubbed_reference_text = clubbed_reference_text
 
     print(f"✅ Top Responses Stored: {len(top_responses)}")
+    print("Top Responses", top_responses)
     print(f"✅ Clubbed Reference Text Stored")
 
     return state  # ✅ Return updated state
 
 
+def relevancy_agent(state):
+    """
+    Verifies the accuracy of LLM-generated legal responses.
+    """
+    print(f"🔹 Fact-Checking Agent Verifying Response.")
+
+    fact_checking_agent(state.query, state.top_responses, state.clubbed_reference_text)  # ✅ Store fact-checked response
+    return state  # ✅ Return updated state
 
 
+# ✅ Summarization Agent
+def summarization_agent(state):
+    """
+    Summarizes the top responses into a single coherent legal response.
+    """
 
-# def relevancy_agent(state):
-#     """
-#     Verifies the accuracy of LLM-generated legal responses.
-#     """
-#     print(f"🔹 Fact-Checking Agent Verifying Response.")
+    print(f"🔹 Summarization Agent Processing Top Responses.")
 
-#     state.fact_checked_response = verify_legal_facts(state.llm_responses, state.evaluation_scores)  # ✅ Store fact-checked response
-#     return state  # ✅ Return updated state
+    if not state.top_responses or not isinstance(state.top_responses, list):
+        print("⚠️ Warning: No top responses available! Summarization cannot proceed.")
+        state.summarized_response = "Summarization Failed: No valid responses."
+        return state
 
-# def responsible_ai_agent(state):
-#     """
-#     Applies Responsible AI checks (bias, anonymity, privacy).
-#     """
-#     print(f"🔹 Responsible AI Agent Ensuring Fairness & Anonymity.")
+    try:
+        # ✅ Call Summarization Logic from summarize_responses.py
+        summarized_data = call_summarizer_agent(state.query, state.top_responses, state.retrieved_texts)
 
-#     state.final_response = apply_responsible_ai_checks(state.fact_checked_response)  # ✅ Store final response
-#     return state  # ✅ Return updated state
+        # ✅ Convert to JSON String for `AgentState`
+        state.summarized_response = json.dumps(summarized_data)
+
+    except Exception as e:
+        print(f"⚠️ Error during summarization: {e}")
+        state.summarized_response = "Summarization Failed."
+
+    print(f"✅ Summarized Response Stored → {state.summarized_response}")
+    
+    return state
+
+def responsible_ai_agent(state):
+    """
+    Applies Responsible AI checks (bias, anonymity, privacy).
+    """
+    print(f"🔹 Responsible AI Agent Ensuring Fairness & Anonymity.")
+
+    try:
+        # ✅ Convert JSON String to Dictionary Before Passing to Responsible AI
+        summarized_data = json.loads(state.summarized_response) if isinstance(state.summarized_response, str) else state.summarized_response
+
+        # ✅ Call Responsible AI Processing
+        final_text = responsible_agent(summarized_data)
+
+        # ✅ Ensure `final_response` is Properly Stored in State
+        if final_text:
+            state.final_response = final_text  # ✅ Fix: Ensure this field is updated properly
+        else:
+            state.final_response = "RAI Processing Failed: No valid output."
+
+    except json.JSONDecodeError:
+        print("⚠️ Error: Unable to parse summarized_response as JSON.")
+        state.final_response = "Responsible AI Processing Failed."
+
+    print(f"✅ Final Response Stored → {state.final_response}")
+
+    return state

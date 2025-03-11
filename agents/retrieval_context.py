@@ -44,8 +44,8 @@ def retrieve_legal_text(query: str, law_type: str, top_k=3):
     query_embedding = embedding_model.encode(query, convert_to_tensor=True).tolist()
 
     # Debugging: Print Query Embedding
-    print("✅ Query Embedding Shape:", len(query_embedding))
-    print("✅ Query Embedding Sample Values:", query_embedding[:10])  # Print first 10 values
+    # print("✅ Query Embedding Shape:", len(query_embedding))
+    # print("✅ Query Embedding Sample Values:", query_embedding[:10])  # Print first 10 values
 
 
     # Perform similarity search in ChromaDB
@@ -54,7 +54,7 @@ def retrieve_legal_text(query: str, law_type: str, top_k=3):
         n_results=top_k  # Retrieve top-k most relevant results
     )
     
-    print("✅ Raw ChromaDB Query Results:", results)
+    # print("✅ Raw ChromaDB Query Results:", results)
     
     # Format output
     retrieved_texts = []
@@ -66,6 +66,6 @@ def retrieve_legal_text(query: str, law_type: str, top_k=3):
         })
 
     
-    print("✅ Retrieved texts", retrieved_texts)
+    print("✅ Retrieval complete")
 
     return retrieved_texts

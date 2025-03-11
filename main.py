@@ -32,5 +32,5 @@ def run_pipeline(user_query):
 
 
 if __name__ == "__main__":
-    user_query = "Punishment for murder"
+    user_query = "Punishment for rape"
     run_pipeline(user_query)

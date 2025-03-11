@@ -38,7 +38,9 @@ def compute_bleu(reference_tokens, hypothesis_tokens):
         float: BLEU score.
     """
     smoothie = SmoothingFunction().method1  # Prevents zero scores for short texts
-    return sentence_bleu(reference_tokens, hypothesis_tokens, smoothing_function=smoothie)
+    compute_Score =  sentence_bleu(reference_tokens, hypothesis_tokens, smoothing_function=smoothie)
+    print("COMPUTE_SCORE -->", compute_Score)
+    return compute_Score
 
 
 def compute_rouge(reference_tokens, hypothesis_tokens):
@@ -59,7 +61,9 @@ def compute_rouge(reference_tokens, hypothesis_tokens):
     hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
 
     scores = scorer.score(reference_text, hypothesis_text)  # ✅ Ensure both inputs are strings
-    return scores["rougeL"].fmeasure  # ✅ Return ROUGE-L F1 Score
+    rouge_score =  scores["rougeL"].fmeasure  # ✅ Return ROUGE-L F1 Score
+    print("ROUGE_SCORE -->", rouge_score)
+    return rouge_score
 
 def compute_meteor(reference_tokens, hypothesis_tokens):
     """
@@ -76,7 +80,10 @@ def compute_meteor(reference_tokens, hypothesis_tokens):
     # reference_text = " ".join(reference_tokens[0])  # Convert first reference list to string
     # hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
 
-    return meteor_score(reference_tokens, hypothesis_tokens)  # ✅ Ensure METEOR gets strings
+    meteor_score1 =  meteor_score(reference_tokens, hypothesis_tokens)  # ✅ Ensure METEOR gets strings
+    print("METEOR_SCORE", meteor_score1)
+    return meteor_score1
+
 
 def compute_bert(reference_tokens, hypothesis_tokens):
     """
@@ -94,7 +101,11 @@ def compute_bert(reference_tokens, hypothesis_tokens):
     hypothesis_text = " ".join(hypothesis_tokens)  # Convert hypothesis tokens to string
 
     P, R, F1 = bert_score([hypothesis_text], [reference_text], lang="en", rescale_with_baseline=True)
-    return F1[0].item()  # ✅ Ensure BERTScore gets strings
+    bert_score1 =  F1[0].item()  # ✅ Ensure BERTScore gets strings
+    print("BERT_SCORE", bert_score1)
+    return bert_score1
+
+
 
 def club_top_retrieved_texts(retrieved_texts):
     """
@@ -222,11 +233,11 @@ def process_evaluation( llm_response, retrieved_texts):
 
     # Step 2: Evaluate all LLM responses against this reference text
     evaluated_responses = evaluate_llm_responses(llm_response, clubbed_reference_text)
-    print("evaluated_responses <<<```>>>", evaluated_responses)
+    # print("evaluated_responses <<<```>>>", evaluated_responses)
 
     # Step 3: Rank responses and select the top 2
     top_responses = select_top_responses(evaluated_responses)
-    print("top_responses", top_responses)
+    # print("top_responses", top_responses)
     print("reached the end of evaluation agent")
 
     return top_responses, clubbed_reference_text

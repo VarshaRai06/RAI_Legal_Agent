@@ -40,8 +40,8 @@ def retrieval_agent(state):
     # ✅ Call Retrieval Logic
     retrieved_texts = retrieve_legal_text(state.query, state.law_type)
 
-    # ✅ Debugging Print
-    print(f"DEBUG: Retrieved Texts Before Storing → {retrieved_texts}")
+    # # ✅ Debugging Print
+    # print(f"DEBUG: Retrieved Texts Before Storing → {retrieved_texts}")
 
     # ✅ Ensure Retrieved Texts are Stored in Correct State Key
     if isinstance(retrieved_texts, list) and all(isinstance(text, dict) for text in retrieved_texts):
@@ -76,7 +76,7 @@ def llm_agent(state):
     llm_responses = call_llm_with_citation_test(state.query, retrieved_texts_str)
 
     # ✅ Debugging Print
-    print(f"DEBUG: LLM Responses Before Storing → {llm_responses}")
+    # print(f"DEBUG: LLM Responses Before Storing → {llm_responses}")
 
     # ✅ Ensure LLM Response is a List of Dictionaries
     if isinstance(llm_responses, list) and all(isinstance(resp, dict) for resp in llm_responses):
@@ -98,8 +98,8 @@ def evaluation_agent(state):
     print(f"🔹 Evaluation Agent Scoring Response for LLM Output.")
 
     # ✅ Debugging Prints
-    print("DEBUG: Retrieved Texts →", state.retrieved_texts)
-    print("DEBUG: LLM Responses →", state.llm_responses)
+    # print("DEBUG: Retrieved Texts →", state.retrieved_texts)
+    # print("DEBUG: LLM Responses →", state.llm_responses)
 
     # ✅ Ensure LLM Responses are in the Correct Format
     if not isinstance(state.llm_responses, list) or not all(isinstance(resp, dict) for resp in state.llm_responses):
